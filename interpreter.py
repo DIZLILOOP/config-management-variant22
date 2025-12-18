@@ -1,5 +1,6 @@
 import sys
 import csv
+import math
 
 class Interpreter:
     def __init__(self):
@@ -21,24 +22,40 @@ class Interpreter:
                 self.ip += 4
                 const = self.decode_const(self.ip - 4)
                 self.stack.append(const)
+                print(f"[LOAD] Добавили {const} в стек. Стек: {self.stack}")
             elif opcode == 2:  # read
                 self.ip += 1
                 offset = self.memory[self.ip - 1] & 0x1F
+                if not self.stack:
+                    print("[ERROR] Стек пуст при выполнении READ")
+                    break
                 addr = self.stack.pop() + offset
-                self.stack.append(self.memory[addr])
+                value = self.memory[addr]
+                self.stack.append(value)
+                print(f"[READ] Прочитали {value} по адресу {addr}. Стек: {self.stack}")
             elif opcode == 7:  # store
                 self.ip += 4
                 addr = self.decode_addr(self.ip - 4)
+                if not self.stack:
+                    print("[ERROR] Стек пуст при выполнении STORE")
+                    break
                 val = self.stack.pop()
                 self.memory[addr] = val
+                print(f"[STORE] Записали {val} по адресу {addr}. Стек: {self.stack}")
             elif opcode == 1:  # sqrt
                 self.ip += 5
                 addr, offset = self.decode_sqrt(self.ip - 5)
+                if not self.stack:
+                    print("[ERROR] Стек пуст при выполнении SQRT")
+                    break
                 val_addr = self.stack.pop() + offset
-                result = int(self.memory[val_addr] ** 0.5)
+                value = self.memory[val_addr]
+                result = int(math.sqrt(value))
                 self.memory[addr] = result
+                print(f"[SQRT] sqrt({value}) = {result}, записали по адресу {addr}. Стек: {self.stack}")
             else:
-                raise ValueError(f"Unknown opcode: {opcode}")
+                print(f"[ERROR] Неизвестный opcode: {opcode}")
+                break
 
     def decode_const(self, start):
         b1 = self.memory[start] & 0x1F
@@ -72,7 +89,9 @@ class Interpreter:
 if __name__ == "__main__":
     if len(sys.argv) < 5:
         print("Usage: python interpreter.py <program.bin> <dump.csv> <start> <end>")
+        print("Пример: python interpreter.py program.bin dump.csv 0 100")
         sys.exit(1)
+    
     program_file = sys.argv[1]
     dump_file = sys.argv[2]
     start = int(sys.argv[3])
@@ -80,6 +99,7 @@ if __name__ == "__main__":
 
     interpreter = Interpreter()
     length = interpreter.load_program(program_file)
+    print(f"Загружена программа длиной {length} байт")
     interpreter.run(length)
     interpreter.dump_memory(start, end, dump_file)
-    print(f"Program executed. Memory dumped to {dump_file}")
+    print(f"\nПрограмма выполнена. Дамп памяти сохранён в {dump_file}")
